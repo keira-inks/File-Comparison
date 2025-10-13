@@ -45,6 +45,137 @@ int main (int argc, char * argv[]) {
 
 } // main
 
+/*
+ * Puts the characters found in file1 that is not found in file2 into differencesFoundInFile1.txt and
+ * calculuates and prints the time it takes to do so.
+ */
+void step1 (int argc, char * argv[]) {
+
+    // To determine the amount of time this step takes
+    double step1Time;
+    struct timeval startTime;
+    struct timeval endTime;
+    gettimeofday (&startTime, NULL);
+
+    // Will be accessing files ONE BYTE AT A TIME - buffer of TWO
+    int fdr1 = -1;
+    int fdrFile1 = -1;
+    int fdrFile2 = -1;
+
+    // Offset (size) from using SEEK_END
+    int file1Size = -1;
+    int file2Size = -1;
+
+    // Opening files
+    fdr1 = open ("differencesFoundInFile1.txt", O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+    handleFDRExceptions (fdr1);
+
+    fdrFile1 = open (argv[1], O_RDONLY);
+    handleFDRExceptions (fdrFile1);
+    fdrFile2 = open (argv[2], O_RDONLY);
+    handleFDRExceptions (fdrFile2);
+
+    // Determining file sizes (changes the offset)
+    file1Size = lseek (fdrFile1, 0, SEEK_END); // Determining size of file
+    handleSeekExceptions (file1Size);
+    file2Size = lseek (fdrFile2, 0, SEEK_END); // Determining size of file
+    handleSeekExceptions (file2Size);
+
+    // Resetting the offset to the beginning of both files
+    int offset1 = lseek (fdrFile1, 0, SEEK_SET);
+    handleSeekExceptions (offset1);
+    int offset2 = lseek (fdrFile2, 0, SEEK_SET);
+    handleSeekExceptions (offset2
+                          );
+    // Buffers
+    int bufferSize = 2;
+    int fdw;
+    // Allocated memory for file 1 comparing char
+    char * bufferFile1 = (char *) malloc (sizeof (char) * bufferSize);
+    bufferFile1[bufferSize - 1] = '\0';
+    // Allocated memory for file 2 comparing char
+    char * bufferFile2 = (char *) malloc (sizeof (char) * bufferSize);
+    bufferFile2[bufferSize - 1] = '\0';
+
+    int bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
+    handleFDRExceptions (bytesReadFile1);
+    int bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
+    handleFDRExceptions (bytesReadFile2);
+
+    // Comparing the first file with the second file
+    if (file1Size > file2Size) { // If file1 is bigger than file2
+        while (bytesReadFile2 != 0) { // As long as we're not at the end of the FIRST file
+
+            if (bufferFile1[0] != bufferFile2[0]) { // Actual comparison occurs here
+                fdw = write (fdr1, bufferFile1, 1);
+                handleFDWExceptions (fdw);
+            } // if
+
+            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile1);
+            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile2);
+
+        } // while
+        // Putting the rest of file1 into the differences file
+        while (bytesReadFile1 != 0) {
+            fdw = write (fdr1, bufferFile1, 1);
+            handleFDWExceptions (fdw);
+            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile1);
+
+        } // while
+
+    } else if (file1Size < file2Size) { // If file1 is smaller than file2
+        while (bytesReadFile1 != 0) {
+            if (bufferFile1[0] != bufferFile2[0]) {
+                fdw = write (fdr1, bufferFile1, 1);
+                handleFDWExceptions (fdw);
+            } // if
+            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile1);
+            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile2);
+
+        } // while
+
+    } else if (file1Size == file2Size) { // If files have equal sizes
+        while (bytesReadFile1 != 0) { // Could have also used bytesReadFile2 since they're equal
+            if (bufferFile1[0] != bufferFile2[0]) {
+                fdw = write (fdr1, bufferFile1, 1);
+                handleFDWExceptions (fdw);
+            } // if
+            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile1);
+            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
+            handleFDRExceptions (bytesReadFile2);
+
+        } // while
+    } // if
+
+    // Closing opened files
+    close (fdr1);
+    close (fdrFile1);
+    close (fdrFile2);
+    // Freeing allocated memory
+    free (bufferFile1);
+    bufferFile1 = NULL;
+    free (bufferFile2);
+    bufferFile2 = NULL;
+
+    // To determine the amount of time this step takes
+    gettimeofday (&endTime, NULL);
+    step1Time = ((endTime.tv_sec - startTime.tv_sec) * 1000.0 + (endTime.tv_usec - startTime.tv_usec) / 1000.0);
+    printf ("Step 1 took %.6f milliseconds\n", step1Time);
+
+
+
+} // step1
+
+/*
+ * Puts the characters found in file2 that is not found in file1 into differencesFoundInFile2.txt and
+ * calculuates and prints the time it takes to do so.
+ */
 void step2 (int argc, char * argv[]) {
     // To determine the amount of time this step takes
     double step2Time;
@@ -174,130 +305,6 @@ void step2 (int argc, char * argv[]) {
 
 } // step2
 
-
-// Puts the stuff found in file1 that's not equal to the corresponding stuff in file2
-void step1 (int argc, char * argv[]) {
-
-    // To determine the amount of time this step takes
-    double step1Time;
-    struct timeval startTime;
-    struct timeval endTime;
-    gettimeofday (&startTime, NULL);
-
-    // Will be accessing files ONE BYTE AT A TIME - buffer of TWO
-    int fdr1 = -1;
-    int fdrFile1 = -1;
-    int fdrFile2 = -1;
-
-    // Offset (size) from using SEEK_END
-    int file1Size = -1;
-    int file2Size = -1;
-
-    // Opening files
-    fdr1 = open ("differencesFoundInFile1.txt", O_RDWR | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
-    handleFDRExceptions (fdr1);
-
-    fdrFile1 = open (argv[1], O_RDONLY);
-    handleFDRExceptions (fdrFile1);
-    fdrFile2 = open (argv[2], O_RDONLY);
-    handleFDRExceptions (fdrFile2);
-
-    // Determining file sizes (changes the offset)
-    file1Size = lseek (fdrFile1, 0, SEEK_END); // Determining size of file
-    handleSeekExceptions (file1Size);
-    file2Size = lseek (fdrFile2, 0, SEEK_END); // Determining size of file
-    handleSeekExceptions (file2Size);
-
-    // Resetting the offset to the beginning of both files
-    int offset1 = lseek (fdrFile1, 0, SEEK_SET);
-    handleSeekExceptions (offset1);
-    int offset2 = lseek (fdrFile2, 0, SEEK_SET);
-    handleSeekExceptions (offset2
-                          );
-    // Buffers
-    int bufferSize = 2;
-    int fdw;
-    // Allocated memory for file 1 comparing char
-    char * bufferFile1 = (char *) malloc (sizeof (char) * bufferSize);
-    bufferFile1[bufferSize - 1] = '\0';
-    // Allocated memory for file 2 comparing char
-    char * bufferFile2 = (char *) malloc (sizeof (char) * bufferSize);
-    bufferFile2[bufferSize - 1] = '\0';
-
-    int bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
-    handleFDRExceptions (bytesReadFile1);
-    int bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
-    handleFDRExceptions (bytesReadFile2);
-
-    // Comparing the first file with the second file
-    if (file1Size > file2Size) { // If file1 is bigger than file2
-        while (bytesReadFile2 != 0) { // As long as we're not at the end of the FIRST file
-
-            if (bufferFile1[0] != bufferFile2[0]) { // Actual comparison occurs here
-                fdw = write (fdr1, bufferFile1, 1);
-                handleFDWExceptions (fdw);
-            } // if
-
-            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile1);
-            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile2);
-
-        } // while
-        // Putting the rest of file1 into the differences file
-        while (bytesReadFile1 != 0) {
-            fdw = write (fdr1, bufferFile1, 1);
-            handleFDWExceptions (fdw);
-            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile1);
-
-        } // while
-
-    } else if (file1Size < file2Size) { // If file1 is smaller than file2
-        while (bytesReadFile1 != 0) {
-            if (bufferFile1[0] != bufferFile2[0]) {
-                fdw = write (fdr1, bufferFile1, 1);
-                handleFDWExceptions (fdw);
-            } // if
-            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile1);
-            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile2);
-
-        } // while
-
-    } else if (file1Size == file2Size) { // If files have equal sizes
-        while (bytesReadFile1 != 0) { // Could have also used bytesReadFile2 since they're equal
-            if (bufferFile1[0] != bufferFile2[0]) {
-                fdw = write (fdr1, bufferFile1, 1);
-                handleFDWExceptions (fdw);
-            } // if
-            bytesReadFile1 = read (fdrFile1, bufferFile1, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile1);
-            bytesReadFile2 = read (fdrFile2, bufferFile2, bufferSize - 1);
-            handleFDRExceptions (bytesReadFile2);
-
-        } // while
-    } // if
-
-    // Closing opened files
-    close (fdr1);
-    close (fdrFile1);
-    close (fdrFile2);
-    // Freeing allocated memory
-    free (bufferFile1);
-    bufferFile1 = NULL;
-    free (bufferFile2);
-    bufferFile2 = NULL;
-
-    // To determine the amount of time this step takes
-    gettimeofday (&endTime, NULL);
-    step1Time = ((endTime.tv_sec - startTime.tv_sec) * 1000.0 + (endTime.tv_usec - startTime.tv_usec) / 1000.0);
-    printf ("Step 1 took %.6f milliseconds\n", step1Time);
-
-
-
-} // step1
 
 void handleSeekExceptions (int fd) {
     if (fd < 0) {
